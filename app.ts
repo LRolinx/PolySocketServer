@@ -14,7 +14,7 @@ const conn = mysql.createConnection(
     }
 )
 
-conn.connect((err) => {
+conn.connect((err: any) => {
     console.log("Mysql连接状态->", err);
 })
 
