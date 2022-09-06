@@ -5,18 +5,18 @@ import readline from "readline";
 import axios from 'axios';
 import mysql from 'mysql';
 
-const conn = mysql.createConnection(
-    {
-        host: 'localhost',
-        user: 'root',
-        password: '123',
-        database: 'bilibili'
-    }
-)
+// const conn = mysql.createConnection(
+//     {
+//         host: 'localhost',
+//         user: 'root',
+//         password: '123',
+//         database: 'bilibili'
+//     }
+// )
 
-conn.connect((err: any) => {
-    console.log("Mysql连接状态->", err);
-})
+// conn.connect((err: any) => {
+//     console.log("Mysql连接状态->", err);
+// })
 
 //房间号
 let bilibiliClient: any;

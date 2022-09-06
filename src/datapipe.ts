@@ -49,7 +49,7 @@ class datapipe {
             //获取地址信息
             let address = ws.address();
             //获取地址详细信息
-            console.log("地址信息->", address)
+            console.log("转发到该地址->", address)
             // console.log("转发服务器监听的地址是：" + address.address);
             // console.log("转发服务器监听的端口是：" + address.port);
             // console.log("转发服务器监听的地址类型是：" + address.family);

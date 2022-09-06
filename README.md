@@ -1,6 +1,6 @@
-## initialize node-js project
+## initialize project
 > yarn
 
 ## run
->node ./app.ts
+>ts-node app.ts
 
