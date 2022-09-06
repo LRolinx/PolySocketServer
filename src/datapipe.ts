@@ -184,6 +184,9 @@ class datapipe {
                 case 'NOTICE_MSG':
                     //通知消息
                     break;
+                case 'SUPER_CHAT_MESSAGE':
+                    //醒目留言
+                    break;
                 case 'GUARD_BUY':
                     //续费舰长
                     miniMsg = {
@@ -201,6 +204,9 @@ class datapipe {
                     break;
                 case 'USER_TOAST_MSG':
                     //续费舰长通知
+                    break;
+                case 8:
+                    console.log("直播结束?")
                     break;
                 default:
                     console.log('---未确认格式---', data);
