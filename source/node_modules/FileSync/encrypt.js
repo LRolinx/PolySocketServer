@@ -1,0 +1,32 @@
+var fs = require('fs'),
+    crypto = require('crypto');
+
+
+
+
+//calculate encrypt salt.
+// https://npm.taobao.org/mirrors/node/v6.9.1/docs/api/crypto.html#crypto_class_hash
+var tmpNum = parseInt(Date.now()/(3600000*24)); //a tmp num changed every day.
+var hash = crypto.createHash('sha256');
+hash.update(tmpNum+'ankdsksa');
+
+var encSalt = hash.digest('hex');//salt
+
+
+var key = encSalt,
+    cipher = crypto.createCipher('aes-256-cbc', key),
+    decipher = crypto.createDecipher('aes-256-cbc', key);
+var input = fs.createReadStream('README.md'),
+ output = fs.createWriteStream('test.txt.enc');
+
+input.pipe(cipher).pipe(output);
+
+output.on('finish', function() {
+    console.log('Encrypted file written to disk!');
+
+    var i = fs.createReadStream('test.txt.enc'),
+        o= fs.createWriteStream('README222.md');
+    i.pipe(decipher).pipe(o);
+});
+
+

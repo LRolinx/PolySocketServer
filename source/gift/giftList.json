@@ -1,0 +1,121 @@
+{
+	"1": {
+		"cmd": "GIFT",
+		"uid": 334640488,
+		"giftName": "辣条",
+		"giftId": 1,
+		"num": 1
+	},
+	"20011": {
+		"cmd": "GIFT",
+		"uid": 94807388,
+		"giftName": "金币",
+		"giftId": 20011,
+		"num": 1
+	},
+	"30426": {
+		"cmd": "GIFT",
+		"uid": 334640488,
+		"giftName": "BLS能量石",
+		"giftId": 30426,
+		"num": 1
+	},
+	"30758": {
+		"cmd": "GIFT",
+		"uid": 697989726,
+		"giftName": "这个好诶",
+		"giftId": 30758,
+		"num": 1
+	},
+	"30896": {
+		"cmd": "GIFT",
+		"uid": 94807388,
+		"giftName": "打榜",
+		"giftId": 30896,
+		"num": 1
+	},
+	"30971": {
+		"cmd": "GIFT",
+		"uid": 1742189587,
+		"giftName": "这个好诶",
+		"giftId": 30971,
+		"num": 1
+	},
+	"31025": {
+		"cmd": "GIFT",
+		"uid": 697989726,
+		"giftName": "泡泡糖",
+		"giftId": 31025,
+		"num": 1
+	},
+	"31036": {
+		"cmd": "GIFT",
+		"uid": 451084101,
+		"giftName": "小花花",
+		"giftId": 31036,
+		"num": 1
+	},
+	"31037": {
+		"cmd": "GIFT",
+		"uid": 697989726,
+		"giftName": "打call",
+		"giftId": 31037,
+		"num": 1
+	},
+	"31039": {
+		"cmd": "GIFT",
+		"uid": 499392123,
+		"giftName": "牛哇牛哇",
+		"giftId": 31039,
+		"num": 1
+	},
+	"31212": {
+		"cmd": "GIFT",
+		"uid": 1742189587,
+		"giftName": "打call",
+		"giftId": 31212,
+		"num": 1
+	},
+	"31214": {
+		"cmd": "GIFT",
+		"uid": 512625528,
+		"giftName": "牛哇",
+		"giftId": 31214,
+		"num": 1
+	},
+	"31216": {
+		"cmd": "GIFT",
+		"uid": 512625528,
+		"giftName": "i了i了",
+		"giftId": 31216,
+		"num": 1
+	},
+	"31225": {
+		"cmd": "GIFT",
+		"uid": 1690704719,
+		"giftName": "牛哇",
+		"giftId": 31225,
+		"num": 1
+	},
+	"31251": {
+		"cmd": "GIFT",
+		"uid": 1742189587,
+		"giftName": "干杯",
+		"giftId": 31251,
+		"num": 1
+	},
+	"31278": {
+		"cmd": "GIFT",
+		"uid": 1690704719,
+		"giftName": "打call",
+		"giftId": 31278,
+		"num": 1
+	},
+	"31531": {
+		"cmd": "GIFT",
+		"uid": 334640488,
+		"giftName": "PK票",
+		"giftId": 31531,
+		"num": 1
+	}
+}
