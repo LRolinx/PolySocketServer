@@ -205,6 +205,9 @@ class datapipe {
                 case 'USER_TOAST_MSG':
                     //续费舰长通知
                     break;
+                case 'LIVE':
+                    //直播开始啦
+                    break;
                 case 8:
                     console.log("直播结束?")
                     break;

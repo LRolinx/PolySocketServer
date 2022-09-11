@@ -55,7 +55,7 @@ const question = rlPromisify(rl.question.bind(rl));
     // let res = request('GET', `https://api.live.bilibili.com/room/v1/Room/room_init?id=${answer.match(/\d+/g)[0]}`);
     // console.log(res.getBody());
     bilibiliClient = answer.match(/\d+/g);
-    bilibiliClient = bilibiliClient ? bilibiliClient[0] : 24393
+    bilibiliClient = bilibiliClient ? bilibiliClient[0] : 25591667
         ;
 
     //获取真实房间id
