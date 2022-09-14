@@ -34,6 +34,7 @@ async function savebilibiliheadImg(uid: any, url: any) {
 
 class datapipe {
     clients: any;
+    ws: WebSocketServer.Server<WebSocketServer.WebSocket>;
     //事件注册
     constructor(port: any) {
         // const this = this;
@@ -43,23 +44,23 @@ class datapipe {
         this.clients = [];
         //this.cmdHandler["ONLINE_RANK_V2"] = this.top;
 
-        const ws = new WebSocketServer.Server({ host: "127.0.0.1", port: port })
+        this.ws = new WebSocketServer.Server({ host: "127.0.0.1", port: port });
 
-        ws.once("listening", function () {
+        this.ws.once("listening", function () {
             //获取地址信息
-            let address = ws.address();
+            let address = this.address();
             //获取地址详细信息
-            console.log("转发到该地址->", address)
+            console.log((new Date()).toLocaleTimeString(),"转发到该地址->", address)
             // console.log("转发服务器监听的地址是：" + address.address);
             // console.log("转发服务器监听的端口是：" + address.port);
             // console.log("转发服务器监听的地址类型是：" + address.family);
         })
 
-        ws.on('connection', (socket: any) => {
+        this.ws.on('connection', (socket: any) => {
             socket.setMaxListeners(10);
             this.clients.push(socket);
 
-            console.log('有新的客户端接入');
+            console.log((new Date()).toLocaleTimeString(),'有客户端接入中转服务');
             console.log(`${(new Date()).toLocaleTimeString()} Client Disconnect. ${this.clients.length}|${socket.getMaxListeners()}`);
 
             socket.on("message", (payloadData: any) => {
@@ -91,12 +92,12 @@ class datapipe {
             });
         });
 
-        ws.on("close", () => {
-            console.log('服务已关闭');
+        this.ws.on("close", () => {
+            console.log((new Date()).toLocaleTimeString(),'转发服务已关闭');
         })
 
-        ws.on("error", (err: any) => {
-            console.log('服务运行异常', err);
+        this.ws.on("error", (err: any) => {
+            console.log((new Date()).toLocaleTimeString(),'转发服务运行异常', err);
         })
     }
 
@@ -108,7 +109,7 @@ class datapipe {
             switch (data.cmd) {
                 case 'DANMU_MSG':
                     //普通弹幕
-
+                    console.log((new Date()).toLocaleTimeString(),data.info[2][1], "->", data.info[1])
                     miniMsg = {
                         cmd: "DANMU_MSG",
                         text: data.info[1],
@@ -121,7 +122,7 @@ class datapipe {
                     break;
                 case 'SUPER_CHAT_MESSAGE_JPN':
                     //超级弹幕
-                    console.log("超级弹幕", data)
+                    // console.log((new Date()).toLocaleTimeString(),"超级弹幕", data)
 
                     miniMsg = {
                         cmd: "DANMU_MSG",
@@ -129,13 +130,27 @@ class datapipe {
                         uid: data.data.uid,
                     }
 
+                    console.log((new Date()).toLocaleTimeString(),"超级弹幕->", miniMsg)
+
                     this.pub(miniMsg);
                 case 'ENTRY_EFFECT':
                     //进入直播特效
                     break;
                 case 'INTERACT_WORD':
                     //进入直播
+                    // console.log(data.data)
                     // console.log("进入直播: " + data.data.uname);
+
+                    miniMsg = {
+                        cmd: "DANMU_MSG",
+                        text: "我来了~",
+                        uid: data.data.uid,
+                        name: data.data.uname,
+                    }
+
+                    console.log((new Date()).toLocaleTimeString(),miniMsg)
+
+                    this.pub(miniMsg);
                     break;
                 case 'ONLINE_RANK_COUNT':
                     //直播排名
@@ -161,7 +176,7 @@ class datapipe {
                         num: data.data.num,
                         price: data.data.price,
                     }
-                    console.log("送礼", data)
+                    console.log((new Date()).toLocaleTimeString(),"送礼", data)
                     this.pub(miniMsg);
                     break;
                 case 'COMBO_SEND':
@@ -208,13 +223,14 @@ class datapipe {
                 case 'LIVE':
                     //直播开始啦
                     break;
-                case 8:
-                    console.log("直播结束?")
-                    break;
                 default:
-                    console.log('---未确认格式---', data);
+                    console.log((new Date()).toLocaleTimeString(),'---未确认格式---', data);
             }
         }
+    }
+
+    async close() {
+        this.ws.close();
     }
 
     async isnullsaveHead(data: any) {

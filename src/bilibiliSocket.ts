@@ -2,7 +2,7 @@ import pako from 'pako'
 import WebSocket from 'ws';
 
 let timer: any = null;
-let ws: any;
+let ws: WebSocket;
 
 
 // 文本解码器
@@ -126,7 +126,9 @@ class BilibiliSocket {
     }
 
 
-
+    /**
+     * 连接
+     */
     connect() {
         let url = 'wss://broadcastlv.chat.bilibili.com/sub';
 
@@ -163,14 +165,14 @@ class BilibiliSocket {
 
         // WebSocket连接关闭回调
         ws.onclose = (e: any) => {
-            console.log("连接已关闭");
+            console.log((new Date()).toLocaleTimeString(),"连接弹幕服务已关闭", e);
             //要在连接关闭的时候停止 心跳包的 定时器
             if (timer != null)
                 clearInterval(timer);
 
-
-
             this.onClose(e);
+            // //重连
+            // this.connect();
         };
 
         //WebSocket接收数据回调
@@ -196,6 +198,13 @@ class BilibiliSocket {
             this.connect();
         };
     }
+
+    /**
+     * 关闭
+     */
+    close() {
+        ws.close();
+    }
 }
 
-export default  BilibiliSocket;
+export default BilibiliSocket;

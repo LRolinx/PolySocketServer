@@ -18,8 +18,13 @@ import mysql from 'mysql';
 //     console.log("Mysql连接状态->", err);
 // })
 
+//默认房间号
+let defaultRoomID = 25591667;
+//默认端口
+let defaultPipe = 888;
+
 //房间号
-let bilibiliClient: any;
+let RoomID: any;
 //端口
 let pipe: any;
 
@@ -51,42 +56,48 @@ const question = rlPromisify(rl.question.bind(rl));
 (async () => {
 
 
-    const answer: any = await question("请输入BiliBili直播地址：");
+    const answer: any = await question(`请输入BiliBili直播地址(${defaultRoomID})：`);
     // let res = request('GET', `https://api.live.bilibili.com/room/v1/Room/room_init?id=${answer.match(/\d+/g)[0]}`);
     // console.log(res.getBody());
-    bilibiliClient = answer.match(/\d+/g);
-    bilibiliClient = bilibiliClient ? bilibiliClient[0] : 25591667
-        ;
+    RoomID = answer.match(/\d+/g);
+    RoomID = RoomID ? RoomID[0] : defaultRoomID;
 
     //获取真实房间id
-    let roomidData = await getbilibiliroomid(bilibiliClient);
-    bilibiliClient = roomidData.data.room_id
+    let roomidData = await getbilibiliroomid(RoomID);
+    RoomID = roomidData.data.room_id
 
-    const answer2: any = await question("请输入转发端口：");
+    const answer2: any = await question(`请输入转发端口(${defaultPipe})：`);
     pipe = answer2.match(/\d+/g);
-    pipe = pipe ? pipe[0] : 888;
+    pipe = pipe ? pipe[0] : defaultPipe;
 
     rl.close();
 
     // WebSocketTest(bilibiliClient);
 
-    // //房间号
-    bilibiliClient = new BilibiliSocket(bilibiliClient);
-    //端口
-    pipe = new datapipe(pipe);
+    // 监听Socket
+    const bilibiliWebSocket = new BilibiliSocket(RoomID);
+    //转发Socket
+    const pipeWebSocket = new datapipe(pipe);
     //协议监听
-    bilibiliClient.onOpen = async function () {
-        console.log(`已进入${bilibiliClient.roomid}号房间,等待客户端连接即可转发`);
+    bilibiliWebSocket.onOpen = async function () {
+        console.log((new Date()).toLocaleTimeString(),`已进入${bilibiliWebSocket.roomid}号房间,等待客户端连接即可转发`);
     };
-    bilibiliClient.onClose = async function (e: any) {
-        console.log(`已退出${bilibiliClient.roomid}号房间`);
+    bilibiliWebSocket.onClose = async function (e: any) {
+        console.log((new Date()).toLocaleTimeString(),`已退出${bilibiliWebSocket.roomid}号房间`);
     }
-    bilibiliClient.onError = async function (e: any) {
-        console.log(`出现未知错误\n${e.message},正在重连房间`);
+    bilibiliWebSocket.onError = async function (e: any) {
+        console.log((new Date()).toLocaleTimeString(),`出现未知错误\n${e.message},正在重连房间`);
     }
-    bilibiliClient.onMessage = async function (msg: any) {
+    bilibiliWebSocket.onMessage = async function (msg: any) {
         //将数据中转出去
-        pipe.danmaku(msg);
+        pipeWebSocket.danmaku(msg);
     }
-    bilibiliClient.connect();
+    bilibiliWebSocket.connect();
+
+    process.on('SIGINT', function () {
+        console.log((new Date()).toLocaleTimeString(),'主动退出服务');
+        bilibiliWebSocket.close();
+        pipeWebSocket.close();
+        process.exit(0);
+    });
 })();
