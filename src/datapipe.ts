@@ -223,6 +223,9 @@ class datapipe {
                 case 'LIVE':
                     //直播开始啦
                     break;
+                case 'ROOM_CHANGE' :
+                    //更改直播信息
+                    break;
                 default:
                     console.log((new Date()).toLocaleTimeString(),'---未确认格式---', data);
             }
