@@ -164,15 +164,18 @@ class BilibiliSocket {
         };
 
         // WebSocket连接关闭回调
-        ws.onclose = (e: any) => {
-            console.log((new Date()).toLocaleTimeString(),"连接弹幕服务已关闭", e);
+        ws.onclose = (e) => {
+            console.log((new Date()).toLocaleTimeString(), "连接弹幕服务已关闭", e.code);
             //要在连接关闭的时候停止 心跳包的 定时器
             if (timer != null)
                 clearInterval(timer);
 
             this.onClose(e);
-            // //重连
-            // this.connect();
+
+            if (e.code == 1006) {
+                //非正常断开 重连
+                this.connect();
+            }
         };
 
         //WebSocket接收数据回调
