@@ -80,7 +80,7 @@ const question = rlPromisify(rl.question.bind(rl));
     const pipeWebSocket = new datapipe(pipe);
     //协议监听
     bilibiliWebSocket.onOpen = async function () {
-        console.log((new Date()).toLocaleTimeString(),`已进入${bilibiliWebSocket.roomid}号房间,等待客户端连接即可转发`);
+        console.log((new Date()).toLocaleTimeString(),`已进入${bilibiliWebSocket.roomid}号房间`);
     };
     bilibiliWebSocket.onClose = async function (e: any) {
         console.log((new Date()).toLocaleTimeString(),`已退出${bilibiliWebSocket.roomid}号房间`);
