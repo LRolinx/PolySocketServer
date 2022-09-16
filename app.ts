@@ -1,22 +1,15 @@
 ///入口文件
 import datapipe from './src/datapipe';
 import BilibiliSocket from "./src/bilibiliSocket";
+import SQLManage from "./src/sqlManage";
 import readline from "readline";
-import axios from 'axios';
-import mysql from 'mysql';
+import { getbilibiliroomid } from './src/axiosManage';
 
-// const conn = mysql.createConnection(
-//     {
-//         host: 'localhost',
-//         user: 'root',
-//         password: '123',
-//         database: 'bilibili'
-//     }
-// )
 
-// conn.connect((err: any) => {
-//     console.log("Mysql连接状态->", err);
-// })
+/**
+ * 数据库
+ */
+// const sqlmanage = new SQLManage('localhost','root','1234','bilibili').connect();
 
 //默认房间号
 let defaultRoomID = 25591667;
@@ -27,19 +20,6 @@ let defaultPipe = 888;
 let RoomID: any;
 //端口
 let pipe: any;
-
-//获取真实房间号
-async function getbilibiliroomid(roomid: any) {
-    let data = await axios.get(`https://api.live.bilibili.com/room/v1/Room/room_init?id=${roomid}`)
-        .then(res => {
-            return res.data;
-        })
-        .catch(error => {
-            return null;
-        });
-    return data;
-}
-
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -80,13 +60,13 @@ const question = rlPromisify(rl.question.bind(rl));
     const pipeWebSocket = new datapipe(pipe);
     //协议监听
     bilibiliWebSocket.onOpen = async function () {
-        console.log((new Date()).toLocaleTimeString(),`已进入${bilibiliWebSocket.roomid}号房间`);
+        console.log((new Date()).toLocaleTimeString(), `已进入${bilibiliWebSocket.roomid}号房间`);
     };
     bilibiliWebSocket.onClose = async function (e: any) {
-        console.log((new Date()).toLocaleTimeString(),`已退出${bilibiliWebSocket.roomid}号房间`);
+        console.log((new Date()).toLocaleTimeString(), `已退出${bilibiliWebSocket.roomid}号房间`);
     }
     bilibiliWebSocket.onError = async function (e: any) {
-        console.log((new Date()).toLocaleTimeString(),`出现未知错误\n${e.message},正在重连房间`);
+        console.log((new Date()).toLocaleTimeString(), `出现未知错误\n${e.message},正在重连房间`);
     }
     bilibiliWebSocket.onMessage = async function (msg: any) {
         //将数据中转出去
@@ -95,7 +75,7 @@ const question = rlPromisify(rl.question.bind(rl));
     bilibiliWebSocket.connect();
 
     process.on('SIGINT', function () {
-        console.log((new Date()).toLocaleTimeString(),'主动退出服务');
+        console.log((new Date()).toLocaleTimeString(), '主动退出服务');
         bilibiliWebSocket.close();
         pipeWebSocket.close();
         process.exit(0);

@@ -1,48 +1,19 @@
 ///数据管道
-import crypto from 'crypto';
-import net from 'net';
-import fs from 'fs';
-import axios from 'axios';
 import WebSocketServer from 'ws';
-
-let uidlist: any = [];
-let saveDataPath = "";
-
-//获取哔哩哔哩用户图片地址
-async function getbilibiliurl(uid: any) {
-    let data = await axios.get(`https://tenapi.cn/bilibili/?uid=${uid}`)
-        .then((res: any) => {
-            return res.data;
-        })
-        .catch((error: any) => {
-            return null;
-        });
-    return data;
-}
-
-async function savebilibiliheadImg(uid: any, url: any) {
-    let data = await axios.get(url, {
-        responseType: 'arraybuffer'
-    }).then((response: any) => {
-        // console.log(response.status);
-        // console.log(response.headers);
-        // fs.writeFileSync(`${saveDataPath}/${uid}.png`, response.data, (err: any) => { });
-        return true;
-    });
-    return data;
-}
+import { getbilibiliurl } from './axiosManage';
+import { savebilibiliheadImg } from './tools';
 
 class datapipe {
+    uidlist: any;
+    saveDataPath: any;
     clients: any;
     ws: WebSocketServer.Server<WebSocketServer.WebSocket>;
     //事件注册
     constructor(port: any) {
-        // const this = this;
         /**
          * @type {WebSocket.WebSocket[]}
          */
         this.clients = [];
-        //this.cmdHandler["ONLINE_RANK_V2"] = this.top;
 
         this.ws = new WebSocketServer.Server({ host: "127.0.0.1", port: port });
 
@@ -50,18 +21,15 @@ class datapipe {
             //获取地址信息
             let address = this.address();
             //获取地址详细信息
-            console.log((new Date()).toLocaleTimeString(),"转发到该地址->", address)
-            // console.log("转发服务器监听的地址是：" + address.address);
-            // console.log("转发服务器监听的端口是：" + address.port);
-            // console.log("转发服务器监听的地址类型是：" + address.family);
+            console.log((new Date()).toLocaleTimeString(), "转发到该地址->", address)
         })
 
         this.ws.on('connection', (socket: any) => {
             socket.setMaxListeners(10);
             this.clients.push(socket);
 
-            console.log((new Date()).toLocaleTimeString(),'有客户端接入中转服务');
-            console.log(`${(new Date()).toLocaleTimeString()} Client Disconnect. ${this.clients.length}|${socket.getMaxListeners()}`);
+            console.log((new Date()).toLocaleTimeString(), `新客户端接入中转服务 ${this.clients.length}|${socket.getMaxListeners()}`);
+            // console.log(`${(new Date()).toLocaleTimeString()} Client Disconnect. ${this.clients.length}|${socket.getMaxListeners()}`);
 
             socket.on("message", (payloadData: any) => {
                 // console.log("server rcv data=" + payloadData);
@@ -69,7 +37,7 @@ class datapipe {
                 switch (data.cmd) {
                     case "LWS_SaveDataPath":
                         //得到保存数据的路径
-                        saveDataPath = data.text;
+                        this.saveDataPath = data.text;
                         break;
                 }
 
@@ -79,7 +47,7 @@ class datapipe {
                 let index = this.clients.indexOf(socket);
                 if (index != -1) {
                     this.clients.splice(index, 1);
-                    console.log(`${(new Date()).toLocaleTimeString()} Client Disconnect. ${this.clients.length}|${socket.getMaxListeners()}`);
+                    console.log(`${(new Date()).toLocaleTimeString()} 客户端断开 ${this.clients.length}|${socket.getMaxListeners()}`);
                 }
             });
 
@@ -87,29 +55,32 @@ class datapipe {
                 let index = this.clients.indexOf(socket);
                 if (index != -1) {
                     this.clients.splice(index, 1);
-                    console.log(`${(new Date()).toLocaleTimeString()} Client Disconnect. ${this.clients.length}|${socket.getMaxListeners()}`);
+                    console.log(`${(new Date()).toLocaleTimeString()} 客户端出现异常断开 ${this.clients.length}|${socket.getMaxListeners()}`);
                 }
             });
         });
 
         this.ws.on("close", () => {
-            console.log((new Date()).toLocaleTimeString(),'转发服务已关闭');
+            console.log((new Date()).toLocaleTimeString(), '转发服务已关闭');
         })
 
         this.ws.on("error", (err: any) => {
-            console.log((new Date()).toLocaleTimeString(),'转发服务运行异常', err);
+            console.log((new Date()).toLocaleTimeString(), '转发服务运行异常', err);
         })
     }
 
-    //游戏弹幕
-    async danmaku(data: any) {
-        if (this.clients.length >= 0 || saveDataPath != "") {
+    /**
+     * 弹幕
+     * @param data 
+     */
+    danmaku = async (data: any) => {
+        if (this.clients.length >= 0 || this.saveDataPath != "") {
             //没获取到保存资源路径和没有任何需要转发的客户端则不转发弹幕
             let miniMsg = {}
             switch (data.cmd) {
                 case 'DANMU_MSG':
                     //普通弹幕
-                    console.log((new Date()).toLocaleTimeString(),data.info[2][1], "->", data.info[1])
+                    console.log((new Date()).toLocaleTimeString(), data.info[2][1], "->", data.info[1])
                     miniMsg = {
                         cmd: "DANMU_MSG",
                         text: data.info[1],
@@ -130,7 +101,7 @@ class datapipe {
                         uid: data.data.uid,
                     }
 
-                    console.log((new Date()).toLocaleTimeString(),"超级弹幕->", miniMsg)
+                    console.log((new Date()).toLocaleTimeString(), "超级弹幕->", miniMsg)
 
                     this.pub(miniMsg);
                 case 'ENTRY_EFFECT':
@@ -148,7 +119,7 @@ class datapipe {
                         name: data.data.uname,
                     }
 
-                    console.log((new Date()).toLocaleTimeString(),miniMsg)
+                    console.log((new Date()).toLocaleTimeString(), miniMsg)
 
                     this.pub(miniMsg);
                     break;
@@ -176,7 +147,7 @@ class datapipe {
                         num: data.data.num,
                         price: data.data.price,
                     }
-                    console.log((new Date()).toLocaleTimeString(),"送礼", data)
+                    console.log((new Date()).toLocaleTimeString(), "送礼", data)
                     this.pub(miniMsg);
                     break;
                 case 'COMBO_SEND':
@@ -223,24 +194,30 @@ class datapipe {
                 case 'LIVE':
                     //直播开始啦
                     break;
-                case 'ROOM_CHANGE' :
+                case 'ROOM_CHANGE':
                     //更改直播信息
                     break;
                 default:
-                    console.log((new Date()).toLocaleTimeString(),'---未确认格式---', data);
+                    console.log((new Date()).toLocaleTimeString(), '---未确认格式---', data);
             }
         }
     }
 
-    async close() {
+    /**
+     * 关闭转发
+     */
+    close = async () => {
         this.ws.close();
     }
 
-    async isnullsaveHead(data: any) {
-        //检查是否已经有对应玩家的头像没有则保存
-        if (!uidlist.includes(data.info[2][0])) {
+    /**
+     * 检查是否已经有对应的玩家头像没有则保存
+     * @param data 
+     */
+    isnullsaveHead = async (data: any) => {
+        if (!this.uidlist.includes(data.info[2][0])) {
             //添加防止重复获取头像
-            uidlist.push(data.info[2][0]);
+            this.uidlist.push(data.info[2][0]);
 
             var bilibilimgdata = await getbilibiliurl(data.info[2][0]);
             if (bilibilimgdata != null) {
@@ -253,7 +230,7 @@ class datapipe {
      * 发送给所有客户端
      * @param {object} msg 
      */
-    pub(msg: any) {
+    pub = (msg: any) => {
         // let buffer = Buffer.from(JSON.stringify(msg))
         // let send = Buffer.alloc(2 + buffer.length);
         // //0b10000000表示发送结束
