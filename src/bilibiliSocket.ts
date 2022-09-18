@@ -6,11 +6,11 @@ let timer: any = null;
 let ws: WebSocket;
 
 class BilibiliSocket {
-    roomid: any
-    onOpen: (e: any) => {}
-    onMessage: (msg: any) => {}
-    onClose: (e: any) => {}
-    onError: (e: any) => {}
+    roomid: any;
+    onOpen: (e: any) => {};
+    onMessage: (msg: any) => {};
+    onClose: (e: any) => {};
+    onError: (e: any) => {};
 
 
     constructor(roomid: any) {

@@ -4,12 +4,25 @@ import { getbilibiliurl } from './axiosManage';
 import { savebilibiliheadImg } from './tools';
 
 class datapipe {
+    onOpen: (e: any) => {};
+    onMessage: (msg: any) => {};
+    onClose: (e: any) => {};
+    onError: (e: any) => {};
     uidlist: any;
     saveDataPath: any;
     clients: any;
     ws: WebSocketServer.Server<WebSocketServer.WebSocket>;
     //事件注册
     constructor(port: any) {
+        this.onOpen = (e: any): any => { };
+
+        this.onMessage = (msg: any): any => { };
+
+        this.onClose = (e: any): any => { };
+
+        this.onError = (e: any): any => { };
+
+
         /**
          * @type {WebSocket.WebSocket[]}
          */
@@ -34,6 +47,7 @@ class datapipe {
             socket.on("message", (payloadData: any) => {
                 // console.log("server rcv data=" + payloadData);
                 let data = JSON.parse(payloadData);
+
                 switch (data.cmd) {
                     case "LWS_SaveDataPath":
                         //得到保存数据的路径
@@ -41,6 +55,7 @@ class datapipe {
                         break;
                 }
 
+                this.onMessage(data);
             });
 
             socket.on("close", () => {
@@ -148,6 +163,7 @@ class datapipe {
                         price: data.data.price,
                     }
                     console.log((new Date()).toLocaleTimeString(), "送礼", data)
+                    
                     this.pub(miniMsg);
                     break;
                 case 'COMBO_SEND':
@@ -200,6 +216,7 @@ class datapipe {
                 default:
                     console.log((new Date()).toLocaleTimeString(), '---未确认格式---', data);
             }
+            this.onMessage(data)
         }
     }
 
