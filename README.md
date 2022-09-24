@@ -2,7 +2,7 @@
 > yarn
 
 ## run
->ts-node app.ts
+>yarn start
 
 ## mysql
 user:root
