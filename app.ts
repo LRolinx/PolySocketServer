@@ -1,8 +1,10 @@
 ///入口文件
 import datapipe from './src/datapipe';
 import BilibiliSocket from "./src/bilibiliSocket";
+import DouYinSocket from "./src/douyinSocket";
 import SQLManage from "./src/sqlManage";
 import readline from "readline";
+
 import { getbilibiliroomid } from './src/axiosManage';
 
 
@@ -11,15 +13,19 @@ import { getbilibiliroomid } from './src/axiosManage';
  */
 let sqlmanage: SQLManage;
 
-//默认房间号
-let defaultRoomID = 25591667;
-//默认端口
+//默认Bilibili房间号
+let defaultBiliBiliRoomID = 25591667;
+//默认转发端口
 let defaultPipe = 888;
+//Bilibili房间号
+let BiliBiliRoomID: any;
+//转发端口
+let Pipe: any;
 
-//房间号
-let RoomID: any;
-//端口
-let pipe: any;
+//默认DouYin房间号
+let defaultDouYinRoomID = 628857406017;
+//DouYin房间号
+let DouYinRoomID: any;
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -34,21 +40,24 @@ function rlPromisify(fn: any) {
 
 const question = rlPromisify(rl.question.bind(rl));
 (async () => {
-
-
-    const answer: any = await question(`请输入BiliBili直播地址(${defaultRoomID})：`);
-    // let res = request('GET', `https://api.live.bilibili.com/room/v1/Room/room_init?id=${answer.match(/\d+/g)[0]}`);
-    // console.log(res.getBody());
-    RoomID = answer.match(/\d+/g);
-    RoomID = RoomID ? RoomID[0] : defaultRoomID;
-
-    //获取真实房间id
-    let roomidData = await getbilibiliroomid(RoomID);
-    RoomID = roomidData.data.room_id
-
+    //获取输入的转发端口
     const answer2: any = await question(`请输入转发端口(${defaultPipe})：`);
-    pipe = answer2.match(/\d+/g);
-    pipe = pipe ? pipe[0] : defaultPipe;
+    Pipe = answer2.match(/\d+/g);
+    Pipe = Pipe ? Pipe[0] : defaultPipe;
+
+    //获取BiliBili直播地址
+    const answer: any = await question(`请输入BiliBili直播地址(${defaultBiliBiliRoomID})：`);
+    BiliBiliRoomID = answer.match(/\d+/g);
+    BiliBiliRoomID = BiliBiliRoomID ? BiliBiliRoomID[0] : defaultBiliBiliRoomID;
+
+    //获取BiliBili真实房间id
+    let roomidData = await getbilibiliroomid(BiliBiliRoomID);
+    BiliBiliRoomID = roomidData.data.room_id
+
+    //获取DouYin直播地址
+    const answer3: any = await question(`请输入DouYin直播地址(${defaultDouYinRoomID})：`);
+    DouYinRoomID = answer3.match(/\d+/g);
+    DouYinRoomID = DouYinRoomID ? DouYinRoomID[0] : defaultDouYinRoomID;
 
     rl.close();
 
@@ -56,9 +65,9 @@ const question = rlPromisify(rl.question.bind(rl));
     sqlmanage = new SQLManage('localhost', 'root', '1234', 'bilibilitopdown').connect();
 
     // 监听Socket
-    const bilibiliWebSocket = new BilibiliSocket(RoomID);
+    const bilibiliWebSocket = new BilibiliSocket(BiliBiliRoomID);
     //转发Socket
-    const pipeWebSocket = new datapipe(pipe);
+    const pipeWebSocket = new datapipe(Pipe);
     //协议监听
     bilibiliWebSocket.onOpen = async () => {
         console.log((new Date()).toLocaleTimeString(), `已进入${bilibiliWebSocket.roomid}号房间`);
@@ -75,27 +84,42 @@ const question = rlPromisify(rl.question.bind(rl));
     }
     bilibiliWebSocket.connect();
 
+
+    //抖音的Socket
+    const douyinWebSocket = new DouYinSocket(DouYinRoomID);
+
+
+    douyinWebSocket.connect();
+    // handleWebcast(DouYinRoomID, (name, content, html) => {
+    //     // console.log(html);
+    //     const data = JSON.stringify({ name, content, html });
+    // //     io.clients.forEach((client) => {
+    // //       client.send(data);
+    // //     });
+    //   });
+    
+
     /**
      * 接收客户端发送过来的命令
-     * @param data 
+     * @param data
      */
     pipeWebSocket.onMessage = async (data) => {
         let miniMsg = {};
         let sql: any;
 
         switch (data.cmd) {
-            case "LWS_GetBilibiliUidForUser":
+            case "BiliBili_GetBilibiliUidForUser":
                 //通过bilibili用户id获取用户是否存在
                 sql = await sqlmanage.query(`select * from user where bilibiliUid = ${data.text}`)
                 if (sql.length != 0) {
                     miniMsg = {
-                        cmd: "LWS_GetBilibiliUidForUser",
+                        cmd: "BiliBili_GetBilibiliUidForUser",
                         text: true,
                         uid: data.text
                     }
                 } else {
                     miniMsg = {
-                        cmd: "LWS_GetBilibiliUidForUser",
+                        cmd: "BiliBili_GetBilibiliUidForUser",
                         text: false,
                         uid: data.text
                     }
@@ -104,7 +128,7 @@ const question = rlPromisify(rl.question.bind(rl));
                 pipeWebSocket.pub(miniMsg)
                 break;
 
-            case "SEND_GIFT":
+            case "BiliBili_SEND_GIFT":
                 if (data.data.giftName == "粉丝团灯牌") {
                     //检查用户是否存在
                     sql = await sqlmanage.query(`select * from user where bilibiliUid = ${data.data.uid}`)

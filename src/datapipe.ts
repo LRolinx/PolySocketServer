@@ -49,7 +49,7 @@ class datapipe {
                 let data = JSON.parse(payloadData);
 
                 switch (data.cmd) {
-                    case "LWS_SaveDataPath":
+                    case "BiliBili_SaveDataPath":
                         //得到保存数据的路径
                         this.saveDataPath = data.text;
                         break;
@@ -97,7 +97,7 @@ class datapipe {
                     //普通弹幕
                     console.log((new Date()).toLocaleTimeString(), data.info[2][1], "->", data.info[1])
                     miniMsg = {
-                        cmd: "DANMU_MSG",
+                        cmd: "BiliBili_DANMU_MSG",
                         text: data.info[1],
                         uid: data.info[2][0],
                         name: data.info[2][1],
@@ -111,7 +111,7 @@ class datapipe {
                     // console.log((new Date()).toLocaleTimeString(),"超级弹幕", data)
 
                     miniMsg = {
-                        cmd: "DANMU_MSG",
+                        cmd: "BiliBili_DANMU_MSG",
                         text: data.data.message,
                         uid: data.data.uid,
                     }
@@ -128,7 +128,7 @@ class datapipe {
                     // console.log("进入直播: " + data.data.uname);
 
                     miniMsg = {
-                        cmd: "DANMU_MSG",
+                        cmd: "BiliBili_DANMU_MSG",
                         text: "我来了~",
                         uid: data.data.uid,
                         name: data.data.uname,
@@ -153,7 +153,7 @@ class datapipe {
                 case 'SEND_GIFT':
                     //送礼物
                     miniMsg = {
-                        cmd: "SEND_GIFT",
+                        cmd: "BiliBili_SEND_GIFT",
                         uid: data.data.uid,
                         name: data.data.uname,
                         giftName: data.data.giftName,
@@ -192,7 +192,7 @@ class datapipe {
                 case 'GUARD_BUY':
                     //续费舰长
                     miniMsg = {
-                        cmd: "SEND_GIFT",
+                        cmd: "BiliBili_SEND_GIFT",
                         uid: data.data.uid,
                         name: data.data.username,
                         giftName: data.data.gift_name,

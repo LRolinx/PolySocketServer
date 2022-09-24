@@ -52,13 +52,19 @@ class BilibiliSocket {
             //心跳包的定时器
             timer = setInterval(() => { //定时器 注意声明timer变量
                 let n1 = new ArrayBuffer(16)
-                let i = new DataView(n1);
-                i.setUint32(0, 0),  //封包总大小
-                    i.setUint16(4, 16), //头部长度
-                    i.setUint16(6, 1), //协议版本
-                    i.setUint32(8, 2),  // 操作码 2 心跳包
-                    i.setUint32(12, 1); //就1
-                ws.send(i.buffer); //发送
+                let dataview = new DataView(n1);
+                dataview.setUint16(4, 0x0010);
+                dataview.setUint16(6, 0x0001);
+                dataview.setUint16(10, 0x0002);
+                dataview.setUint16(14, 0x0001);
+                // dataview.setUint32(0, 0);  //封包总大小
+                // dataview.setUint16(4, 16); //头部长度
+                // dataview.setUint16(6, 1); //协议版本
+                // dataview.setUint32(8, 2);  // 操作码 2 心跳包
+                // dataview.setUint32(12, 1); //就1
+
+
+                ws.send(dataview.buffer); //发送
             }, 30000)   //30秒
             this.onOpen(e);
         };
