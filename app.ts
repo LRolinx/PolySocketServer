@@ -23,7 +23,7 @@ let BiliBiliRoomID: any;
 let Pipe: any;
 
 //默认DouYin房间号
-let defaultDouYinRoomID = 628857406017;
+let defaultDouYinRoomID = 981772477368;
 //DouYin房间号
 let DouYinRoomID: any;
 
@@ -70,34 +70,28 @@ const question = rlPromisify(rl.question.bind(rl));
     const pipeWebSocket = new datapipe(Pipe);
     //协议监听
     bilibiliWebSocket.onOpen = async () => {
-        console.log((new Date()).toLocaleTimeString(), `已进入${bilibiliWebSocket.roomid}号房间`);
+        console.log((new Date()).toLocaleTimeString(), `BiliBili已进入${bilibiliWebSocket.roomid}号房间`);
     };
     bilibiliWebSocket.onClose = async (e: any) => {
-        console.log((new Date()).toLocaleTimeString(), `已退出${bilibiliWebSocket.roomid}号房间`);
+        console.log((new Date()).toLocaleTimeString(), `BiliBili已退出${bilibiliWebSocket.roomid}号房间`);
     }
     bilibiliWebSocket.onError = async (e: any) => {
-        console.log((new Date()).toLocaleTimeString(), `出现未知错误\n${e.message},正在重连房间`);
+        console.log((new Date()).toLocaleTimeString(), `BiliBili出现未知错误\n${e.message},正在重连房间`);
     }
     bilibiliWebSocket.onMessage = async (msg: any) => {
         //将数据中转出去
-        pipeWebSocket.danmaku(msg);
+        pipeWebSocket.bilibilidanmaku(msg);
     }
     bilibiliWebSocket.connect();
 
 
     //抖音的Socket
     const douyinWebSocket = new DouYinSocket(DouYinRoomID);
+    // douyinWebSocket.connect();
+    douyinWebSocket.handleWebcast((name: string, content: string, html: string) => {
+        console.log(name,content);
+    });
 
-
-    douyinWebSocket.connect();
-    // handleWebcast(DouYinRoomID, (name, content, html) => {
-    //     // console.log(html);
-    //     const data = JSON.stringify({ name, content, html });
-    // //     io.clients.forEach((client) => {
-    // //       client.send(data);
-    // //     });
-    //   });
-    
 
     /**
      * 接收客户端发送过来的命令
