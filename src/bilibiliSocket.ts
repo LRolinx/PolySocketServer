@@ -35,9 +35,9 @@ class BilibiliSocket {
         let json = {
             "uid": 0,
             "roomid": parseInt(this.roomid), //注意roomid是数字
-            "protover": 1,
+            "protover": 3,
             "platform": "web",
-            "clientver": "1.4.0",
+            // "clientver": "1.4.0",
             // "key": key
         }
 

@@ -11,7 +11,7 @@ class datapipe {
     uidlist: any;
     saveDataPath: any;
     clients: any;
-    ws: WebSocketServer.Server<WebSocketServer.WebSocket>;
+    ws: WebSocketServer.Server;
     //事件注册
     constructor(port: any) {
         this.onOpen = (e: any): any => { };

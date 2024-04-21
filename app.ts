@@ -14,7 +14,7 @@ import { getbilibiliroomid } from './src/axiosManage';
 let sqlmanage: SQLManage;
 
 //默认Bilibili房间号
-let defaultBiliBiliRoomID = 25591667;
+let defaultBiliBiliRoomID = 21678026;//25591667;
 //默认转发端口
 let defaultPipe = 888;
 //Bilibili房间号

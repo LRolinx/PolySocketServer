@@ -15,6 +15,7 @@
     "nodejs-websocket": "^1.7.2",
     "pako": "^2.0.4",
     "puppeteer": "^18.0.5",
+    "ts-node": "^10.9.2",
     "ws": "^8.8.1"
   },
   "name": "bilibliSocketServer",
