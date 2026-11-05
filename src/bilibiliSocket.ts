@@ -1,118 +1,148 @@
-
 import WebSocket from 'ws';
+import { getBilibiliDanmuInfo } from './axiosManage';
 import { decode, getCertification } from './tools';
 
-let timer: any = null;
-let ws: WebSocket;
+type DanmuServer = { host: string; wss_port: number };
 
 class BilibiliSocket {
     roomid: any;
-    onOpen: (e: any) => {};
-    onMessage: (msg: any) => {};
-    onClose: (e: any) => {};
-    onError: (e: any) => {};
+    onOpen: (e: any) => void;
+    onMessage: (msg: any) => void;
+    onClose: (e: any) => void;
+    onError: (e: any) => void;
 
+    private ws: WebSocket | null = null;
+    private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    private stopped = false;
+    private reconnectAttempts = 0;
 
     constructor(roomid: any) {
-        this.roomid = roomid
-
-        this.onOpen = (e: any): any => { };
-
-        this.onMessage = (msg: any): any => { };
-
-        this.onClose = (e: any): any => { };
-
-        this.onError = (e: any): any => { };
+        this.roomid = roomid;
+        this.onOpen = (_e: any): void => { };
+        this.onMessage = (_msg: any): void => { };
+        this.onClose = (_e: any): void => { };
+        this.onError = (_e: any): void => { };
     }
 
-
-    /**
-     * 连接
-     */
+    /** Connect using a fresh Bilibili danmaku token and server list. */
     connect() {
-        let url = 'wss://broadcastlv.chat.bilibili.com/sub';
-
-        let json = {
-            "uid": 0,
-            "roomid": parseInt(this.roomid), //注意roomid是数字
-            "protover": 3,
-            "platform": "web",
-            // "clientver": "1.4.0",
-            // "key": key
-        }
-
-        if (ws) //防止重复连接
-            ws.close()
-        // 打开一个 web socket
-        ws = new WebSocket(url);
-        // WebSocket连接成功回调
-        ws.onopen = (e: any) => {
-            //组合认证数据包 并发送
-            ws.send(getCertification(JSON.stringify(json)).buffer);
-            //心跳包的定时器
-            timer = setInterval(() => { //定时器 注意声明timer变量
-                let n1 = new ArrayBuffer(16)
-                let dataview = new DataView(n1);
-                dataview.setUint16(4, 0x0010);
-                dataview.setUint16(6, 0x0001);
-                dataview.setUint16(10, 0x0002);
-                dataview.setUint16(14, 0x0001);
-                // dataview.setUint32(0, 0);  //封包总大小
-                // dataview.setUint16(4, 16); //头部长度
-                // dataview.setUint16(6, 1); //协议版本
-                // dataview.setUint32(8, 2);  // 操作码 2 心跳包
-                // dataview.setUint32(12, 1); //就1
-
-
-                ws.send(dataview.buffer); //发送
-            }, 30000)   //30秒
-            this.onOpen(e);
-        };
-
-        // WebSocket连接关闭回调
-        ws.onclose = (e) => {
-            console.log((new Date()).toLocaleTimeString(), "连接弹幕服务已关闭", e.code);
-            //要在连接关闭的时候停止 心跳包的 定时器
-            if (timer != null)
-                clearInterval(timer);
-
-            this.onClose(e);
-
-            if (e.code == 1006) {
-                //非正常断开 重连
-                this.connect();
-            }
-        };
-
-        //WebSocket接收数据回调
-        ws.onmessage = (evt: any) => {
-            let blob = evt.data;
-            //对数据进行解码 decode方法
-            decode(blob, (packet: any) => {
-                //解码成功回调
-                if (packet.op == 5) {
-                    //会同时有多个 数发过来 所以要循环
-                    for (let i = 0, len = packet.body.length; i < len; i++) {
-                        let element = packet.body[i];
-                        //将数据回调回去
-                        this.onMessage(element)
-                    }
-
-                }
-            });
-        };
-
-        ws.onerror = (e: any) => {
-            this.onError(e);
-            this.connect();
-        };
+        this.stopped = false;
+        this.reconnectAttempts = 0;
+        void this.open();
     }
 
-    /**
-     * 关闭
-     */
+    private async open() {
+        try {
+            const danmuInfo = await getBilibiliDanmuInfo(this.roomid);
+            if (this.stopped) return;
+
+            const hostList = danmuInfo.host_list as DanmuServer[];
+            const server = hostList[this.reconnectAttempts % hostList.length];
+            const ws = new WebSocket(`wss://${server.host}:${server.wss_port}/sub`);
+            this.ws = ws;
+
+            ws.onopen = () => {
+                if (this.ws !== ws || this.stopped) return;
+                const auth = {
+                    uid: 0,
+                    roomid: Number(this.roomid),
+                    protover: 3,
+                    platform: 'web',
+                    type: 2,
+                    key: danmuInfo.token,
+                    buvid: danmuInfo.buvid3,
+                };
+                ws.send(getCertification(JSON.stringify(auth)));
+                this.startHeartbeat(ws);
+            };
+
+            ws.onmessage = (event: any) => {
+                try {
+                    decode(event.data, (packet: any) => {
+                        if (packet.op === 8) {
+                            if (packet.body?.code === 0) {
+                                this.reconnectAttempts = 0;
+                                this.onOpen(packet.body);
+                            } else {
+                                this.onError(new Error(`哔哩哔哩弹幕认证失败：${packet.body?.message || packet.body?.code || '未知错误'}`));
+                                ws.close();
+                            }
+                            return;
+                        }
+
+                        if (packet.op === 5 && Array.isArray(packet.body)) {
+                            packet.body.forEach((message: any) => this.onMessage(message));
+                        }
+                    });
+                } catch (error) {
+                    this.onError(error);
+                }
+            };
+
+            ws.onclose = (event: any) => {
+                if (this.ws === ws) {
+                    this.ws = null;
+                    this.clearHeartbeat();
+                }
+                this.onClose(event);
+                this.scheduleReconnect();
+            };
+
+            ws.onerror = (error: any) => {
+                this.onError(error);
+            };
+        } catch (error) {
+            if (this.stopped) return;
+            this.onError(error);
+            this.scheduleReconnect();
+        }
+    }
+
+    private startHeartbeat(ws: WebSocket) {
+        this.clearHeartbeat();
+        this.heartbeatTimer = setInterval(() => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+            const packet = Buffer.alloc(16);
+            packet.writeUInt32BE(16, 0);
+            packet.writeUInt16BE(16, 4);
+            packet.writeUInt16BE(1, 6);
+            packet.writeUInt32BE(2, 8);
+            packet.writeUInt32BE(1, 12);
+            ws.send(packet);
+        }, 30000);
+    }
+
+    private clearHeartbeat() {
+        if (this.heartbeatTimer !== null) {
+            clearInterval(this.heartbeatTimer);
+            this.heartbeatTimer = null;
+        }
+    }
+
+    private scheduleReconnect() {
+        if (this.stopped || this.reconnectTimer !== null) return;
+        const delay = Math.min(30000, 1000 * Math.pow(2, Math.min(this.reconnectAttempts, 5)));
+        this.reconnectAttempts++;
+        this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            void this.open();
+        }, delay);
+    }
+
+    /** Close this room connection and prevent automatic reconnects. */
     close() {
-        ws.close();
+        this.stopped = true;
+        this.clearHeartbeat();
+        if (this.reconnectTimer !== null) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        if (this.ws !== null) {
+            const ws = this.ws;
+            this.ws = null;
+            ws.close();
+        }
     }
 }
 

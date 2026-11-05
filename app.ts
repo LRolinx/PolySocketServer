@@ -52,7 +52,12 @@ const question = rlPromisify(rl.question.bind(rl));
 
     //获取BiliBili真实房间id
     let roomidData = await getbilibiliroomid(BiliBiliRoomID);
-    BiliBiliRoomID = roomidData.data.room_id
+    if (!roomidData?.data?.room_id) {
+        console.error("无法获取BiliBili真实房间号，请检查房间地址或网络连接。");
+        rl.close();
+        return;
+    }
+    BiliBiliRoomID = roomidData.data.room_id;
 
     //获取DouYin直播地址
     const answer3: any = await question(`请输入DouYin直播地址(${defaultDouYinRoomID})：`);
