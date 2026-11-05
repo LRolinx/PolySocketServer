@@ -1,6 +1,5 @@
 import axios from 'axios';
-import pako from 'pako';
-import { brotliDecompressSync } from 'zlib';
+import { brotliDecompressSync, inflateSync } from 'zlib';
 
 const textDecoder = new TextDecoder('utf-8');
 
@@ -59,9 +58,9 @@ const parsePacketStream = (buffer: Buffer, depth = 0): ParsedPacketStream => {
         } else if (op === 5) {
             let data = payload;
             if (ver === 2) {
-                data = Buffer.from(pako.inflate(payload));
+                data = inflateSync(payload, { maxOutputLength: 16 * 1024 * 1024 });
             } else if (ver === 3) {
-                data = brotliDecompressSync(payload);
+                data = brotliDecompressSync(payload, { maxOutputLength: 16 * 1024 * 1024 });
             }
 
             if (ver === 2 || ver === 3) {

@@ -1,154 +1,86 @@
-///入口文件
+import { createInterface } from 'node:readline/promises';
+import { once } from 'node:events';
 import datapipe from './src/datapipe';
-import BilibiliSocket from "./src/bilibiliSocket";
-import DouYinSocket from "./src/douyinSocket";
-import SQLManage from "./src/sqlManage";
-import readline from "readline";
-
+import BilibiliSocket from './src/bilibiliSocket';
+import DouYinSocket from './src/douyinSocket';
+import SQLManage from './src/sqlManage';
 import { getbilibiliroomid } from './src/axiosManage';
+import { parseRoomId, parsePort } from './src/config';
 
+async function main() {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const setting = async (name: string, prompt: string, fallback: string) =>
+        process.env[name] ?? (process.stdin.isTTY ? (await rl.question(`${prompt}（${fallback}）：`)).trim() || fallback : fallback);
+    let port: number;
+    let biliRoom: string;
+    let douyinRoom: string;
+    try {
+        port = parsePort(await setting('PORT', '转发端口', '888'));
+        biliRoom = parseRoomId(await setting('BILIBILI_ROOM_ID', 'B站房间，0 关闭', '0'), 'bilibili');
+        douyinRoom = parseRoomId(await setting('DOUYIN_ROOM_ID', '抖音房间，0 关闭', '0'), 'douyin');
+    } finally { rl.close(); }
 
-/**
- * 数据库
- */
-let sqlmanage: SQLManage;
+    const pipe = new datapipe(port);
+    pipe.onError = (error) => console.error('转发服务：', error.message);
+    await once(pipe.ws, 'listening');
+    console.log(`转发服务 ws://127.0.0.1:${port}`);
 
-//默认Bilibili房间号
-let defaultBiliBiliRoomID = 21678026;//25591667;
-//默认转发端口
-let defaultPipe = 888;
-//Bilibili房间号
-let BiliBiliRoomID: any;
-//转发端口
-let Pipe: any;
+    let bili: BilibiliSocket | undefined;
+    let douyin: DouYinSocket | undefined;
+    const sql = process.env.MYSQL_ENABLED === '1' ? new SQLManage(
+        process.env.MYSQL_HOST || 'localhost', process.env.MYSQL_USER || 'root',
+        process.env.MYSQL_PASSWORD || '', process.env.MYSQL_DATABASE || 'bilibilitopdown',
+    ).connect() : undefined;
 
-//默认DouYin房间号
-let defaultDouYinRoomID = 981772477368;
-//DouYin房间号
-let DouYinRoomID: any;
-
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-function rlPromisify(fn: any) {
-    return async (...args: any) => {
-        return new Promise(resolve => fn(...args, resolve));
+    pipe.onMessage = async (data) => {
+        if (data.cmd !== 'BiliBili_GetBilibiliUidForUser' && data.cmd !== 'BiliBili_SEND_GIFT') return;
+        if (!sql) { pipe.pub({ cmd: 'ERROR', text: '数据库功能未启用' }); return; }
+        if (data.cmd === 'BiliBili_GetBilibiliUidForUser') {
+            const uid = String(data.text || '');
+            if (!/^\d+$/.test(uid)) throw new Error('无效的 B站 UID');
+            const rows = await sql.query('select * from user where bilibiliUid = ?', [uid]);
+            pipe.pub({ cmd: data.cmd, text: rows.length !== 0, uid: data.text });
+        } else if (data.data?.giftName === '粉丝团灯牌') {
+            const uid = String(data.data.uid || '');
+            if (!/^\d+$/.test(uid)) throw new Error('无效的 B站 UID');
+            const rows = await sql.query('select * from user where bilibiliUid = ?', [uid]);
+            if (rows.length === 0) await sql.query(
+                'insert into user (phone,bilibiliUid,douyinUid,wechatOpenid,qq,money,isBlockade,isDelete) values(null,?,null,null,null,0,0,0)', [uid],
+            );
+        }
     };
-}
 
-const question = rlPromisify(rl.question.bind(rl));
-(async () => {
-    //获取输入的转发端口
-    const answer2: any = await question(`请输入转发端口(${defaultPipe})：`);
-    Pipe = answer2.match(/\d+/g);
-    Pipe = Pipe ? Pipe[0] : defaultPipe;
-
-    //获取BiliBili直播地址
-    const answer: any = await question(`请输入BiliBili直播地址(${defaultBiliBiliRoomID})：`);
-    BiliBiliRoomID = answer.match(/\d+/g);
-    BiliBiliRoomID = BiliBiliRoomID ? BiliBiliRoomID[0] : defaultBiliBiliRoomID;
-
-    //获取BiliBili真实房间id
-    let roomidData = await getbilibiliroomid(BiliBiliRoomID);
-    if (!roomidData?.data?.room_id) {
-        console.error("无法获取BiliBili真实房间号，请检查房间地址或网络连接。");
-        rl.close();
-        return;
-    }
-    BiliBiliRoomID = roomidData.data.room_id;
-
-    //获取DouYin直播地址
-    const answer3: any = await question(`请输入DouYin直播地址(${defaultDouYinRoomID})：`);
-    DouYinRoomID = answer3.match(/\d+/g);
-    DouYinRoomID = DouYinRoomID ? DouYinRoomID[0] : defaultDouYinRoomID;
-
-    rl.close();
-
-    //连接数据库
-    sqlmanage = new SQLManage('localhost', 'root', '1234', 'bilibilitopdown').connect();
-
-    // 监听Socket
-    const bilibiliWebSocket = new BilibiliSocket(BiliBiliRoomID);
-    //转发Socket
-    const pipeWebSocket = new datapipe(Pipe);
-    //协议监听
-    bilibiliWebSocket.onOpen = async () => {
-        console.log((new Date()).toLocaleTimeString(), `BiliBili已进入${bilibiliWebSocket.roomid}号房间`);
+    let closing = false;
+    const shutdown = async () => {
+        if (closing) return;
+        closing = true;
+        bili?.close();
+        await Promise.allSettled([douyin?.close(), pipe.close(), sql?.close()]);
     };
-    bilibiliWebSocket.onClose = async (e: any) => {
-        console.log((new Date()).toLocaleTimeString(), `BiliBili已退出${bilibiliWebSocket.roomid}号房间`);
-    }
-    bilibiliWebSocket.onError = async (e: any) => {
-        console.log((new Date()).toLocaleTimeString(), `BiliBili出现未知错误\n${e.message},正在重连房间`);
-    }
-    bilibiliWebSocket.onMessage = async (msg: any) => {
-        //将数据中转出去
-        pipeWebSocket.bilibilidanmaku(msg);
-    }
-    bilibiliWebSocket.connect();
+    process.once('SIGINT', () => void shutdown());
+    process.once('SIGTERM', () => void shutdown());
 
-
-    //抖音的Socket
-    const douyinWebSocket = new DouYinSocket(DouYinRoomID);
-    // douyinWebSocket.connect();
-    douyinWebSocket.handleWebcast((name: string, content: string, html: string) => {
-        console.log(name,content);
-    });
-
-
-    /**
-     * 接收客户端发送过来的命令
-     * @param data
-     */
-    pipeWebSocket.onMessage = async (data) => {
-        let miniMsg = {};
-        let sql: any;
-
-        switch (data.cmd) {
-            case "BiliBili_GetBilibiliUidForUser":
-                //通过bilibili用户id获取用户是否存在
-                sql = await sqlmanage.query(`select * from user where bilibiliUid = ${data.text}`)
-                if (sql.length != 0) {
-                    miniMsg = {
-                        cmd: "BiliBili_GetBilibiliUidForUser",
-                        text: true,
-                        uid: data.text
-                    }
-                } else {
-                    miniMsg = {
-                        cmd: "BiliBili_GetBilibiliUidForUser",
-                        text: false,
-                        uid: data.text
-                    }
-                }
-
-                pipeWebSocket.pub(miniMsg)
-                break;
-
-            case "BiliBili_SEND_GIFT":
-                if (data.data.giftName == "粉丝团灯牌") {
-                    //检查用户是否存在
-                    sql = await sqlmanage.query(`select * from user where bilibiliUid = ${data.data.uid}`)
-
-                    if (sql.length == 0) {
-                        //添加用户
-                        sqlmanage.query(`
-                            insert into user
-                            (phone,bilibiliUid,douyinUid,wechatOpenid,qq,money,isBlockade,isDelete)
-                            values(null,${data.data.uid},null,null,null,0,0,0)
-                            `)
-                    }
-                    break;
-                }
+    if (biliRoom !== '0') {
+        const response = await getbilibiliroomid(biliRoom);
+        if (closing) return;
+        if (!response?.data?.room_id) console.error('B站房间解析失败，请检查地址和网络');
+        else {
+            bili = new BilibiliSocket(response.data.room_id);
+            bili.onOpen = () => console.log(`B站已连接 ${bili!.roomid}`);
+            bili.onClose = () => console.log('B站连接断开，等待重连');
+            bili.onError = (error) => console.error('B站：', error.message);
+            bili.onMessage = pipe.bilibilidanmaku;
+            bili.connect();
         }
     }
+    if (douyinRoom !== '0' && !closing) {
+        douyin = new DouYinSocket(douyinRoom);
+        douyin.onOpen = () => console.log(`抖音已连接 ${douyinRoom}`);
+        douyin.onClose = () => console.log('抖音连接断开，等待重连');
+        douyin.onError = (error) => console.error('抖音：', error.message);
+        douyin.onMessage = pipe.douyindanmaku;
+        void douyin.connect().catch(() => {});
+    }
+}
 
-    process.on('SIGINT', () => {
-        console.log((new Date()).toLocaleTimeString(), '主动退出服务');
-        bilibiliWebSocket.close();
-        pipeWebSocket.close();
-        process.exit(0);
-    });
-})();
+main().catch((error) => { console.error(error.message); process.exitCode = 1; });

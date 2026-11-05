@@ -10,12 +10,16 @@ class BilibiliSocket {
     onMessage: (msg: any) => void;
     onClose: (e: any) => void;
     onError: (e: any) => void;
+    endpoint = '';
+    heartbeatReplies = 0;
 
     private ws: WebSocket | null = null;
     private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     private stopped = false;
     private reconnectAttempts = 0;
+    private generation = 0;
+    private authTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(roomid: any) {
         this.roomid = roomid;
@@ -27,19 +31,22 @@ class BilibiliSocket {
 
     /** Connect using a fresh Bilibili danmaku token and server list. */
     connect() {
+        this.close();
         this.stopped = false;
         this.reconnectAttempts = 0;
-        void this.open();
+        this.heartbeatReplies = 0;
+        void this.open(++this.generation);
     }
 
-    private async open() {
+    private async open(generation: number) {
         try {
             const danmuInfo = await getBilibiliDanmuInfo(this.roomid);
-            if (this.stopped) return;
+            if (this.stopped || generation !== this.generation) return;
 
             const hostList = danmuInfo.host_list as DanmuServer[];
             const server = hostList[this.reconnectAttempts % hostList.length];
-            const ws = new WebSocket(`wss://${server.host}:${server.wss_port}/sub`);
+            this.endpoint = `wss://${server.host}:${server.wss_port}/sub`;
+            const ws = new WebSocket(this.endpoint, { origin: 'https://live.bilibili.com', handshakeTimeout: 15000 });
             this.ws = ws;
 
             ws.onopen = () => {
@@ -54,13 +61,19 @@ class BilibiliSocket {
                     buvid: danmuInfo.buvid3,
                 };
                 ws.send(getCertification(JSON.stringify(auth)));
+                this.authTimer = setTimeout(() => {
+                    this.onError(new Error('哔哩哔哩弹幕认证超时'));
+                    ws.terminate();
+                }, 10000);
                 this.startHeartbeat(ws);
             };
 
             ws.onmessage = (event: any) => {
+                if (this.stopped || generation !== this.generation) return;
                 try {
                     decode(event.data, (packet: any) => {
                         if (packet.op === 8) {
+                            this.clearAuthTimer();
                             if (packet.body?.code === 0) {
                                 this.reconnectAttempts = 0;
                                 this.onOpen(packet.body);
@@ -70,6 +83,7 @@ class BilibiliSocket {
                             }
                             return;
                         }
+                        if (packet.op === 3) this.heartbeatReplies++;
 
                         if (packet.op === 5 && Array.isArray(packet.body)) {
                             packet.body.forEach((message: any) => this.onMessage(message));
@@ -81,6 +95,8 @@ class BilibiliSocket {
             };
 
             ws.onclose = (event: any) => {
+                if (generation !== this.generation) return;
+                this.clearAuthTimer();
                 if (this.ws === ws) {
                     this.ws = null;
                     this.clearHeartbeat();
@@ -90,10 +106,10 @@ class BilibiliSocket {
             };
 
             ws.onerror = (error: any) => {
-                this.onError(error);
+                if (!this.stopped && generation === this.generation) this.onError(error);
             };
         } catch (error) {
-            if (this.stopped) return;
+            if (this.stopped || generation !== this.generation) return;
             this.onError(error);
             this.scheduleReconnect();
         }
@@ -120,20 +136,27 @@ class BilibiliSocket {
         }
     }
 
+    private clearAuthTimer() {
+        if (this.authTimer) clearTimeout(this.authTimer);
+        this.authTimer = null;
+    }
+
     private scheduleReconnect() {
         if (this.stopped || this.reconnectTimer !== null) return;
         const delay = Math.min(30000, 1000 * Math.pow(2, Math.min(this.reconnectAttempts, 5)));
         this.reconnectAttempts++;
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
-            void this.open();
+            void this.open(this.generation);
         }, delay);
     }
 
     /** Close this room connection and prevent automatic reconnects. */
     close() {
         this.stopped = true;
+        ++this.generation;
         this.clearHeartbeat();
+        this.clearAuthTimer();
         if (this.reconnectTimer !== null) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
@@ -141,7 +164,8 @@ class BilibiliSocket {
         if (this.ws !== null) {
             const ws = this.ws;
             this.ws = null;
-            ws.close();
+            if (ws.readyState === WebSocket.CONNECTING) ws.terminate();
+            else ws.close();
         }
     }
 }

@@ -53,7 +53,7 @@ const getBilibiliWbiConfig = async (): Promise<BilibiliWbiConfig> => {
 };
 
 const signWbiParams = (params: Record<string, string>, mixinKey: string): Record<string, string> => {
-    const signedParams = { ...params, wts: Math.floor(Date.now() / 1000).toString() };
+    const signedParams: Record<string, string> = { ...params, wts: Math.floor(Date.now() / 1000).toString() };
     const query = Object.keys(signedParams)
         .sort()
         .map((key) => {

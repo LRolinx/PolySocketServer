@@ -1,56 +1,28 @@
 import mysql from 'mysql';
 
-class SQLManage {
-    private host: string;
-    private user: string;
-    private password: string;
-    private database: string;
-    private pool: mysql.Pool | null;
-    constructor(host = 'localhost', user = 'root', password = '1234', database = "") {
-        this.host = host;
-        this.user = user;
-        this.password = password;
-        this.database = database;
-        this.pool = null;
-    }
+export default class SQLManage {
+    private pool: mysql.Pool | null = null;
 
-    connect = (): SQLManage => {
-        this.pool = mysql.createPool({
-            host: this.host,
-            user: this.user,
-            password: this.password,
-            database: this.database,
-        });
-        // this.conn.connect((err: any) => {
-        //     if (err == null) {
-        //         console.log("Mysql连接成功");
-        //     } else {
-        //         console.log("Mysql连接出现问题->", err);
-        //     }
-        // })
+    constructor(private host = 'localhost', private user = 'root', private password = '', private database = '') {}
+
+    connect(): SQLManage {
+        this.pool = mysql.createPool({ host: this.host, user: this.user, password: this.password, database: this.database });
         return this;
     }
 
-    query = (sql: string, values: string = '') => {
+    query(sql: string, values: any[] = []): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.pool?.getConnection((err, connection) => {
-                if (err) {
-                    reject(err)
-                } else {
-                    connection.query(sql, values, (err, rows) => {
-                        if (err) {
-                            reject(err)
-                        } else {
-                            resolve(rows)
-                        }
+            if (!this.pool) { reject(new Error('数据库未连接')); return; }
+            this.pool.query(sql, values, (error, rows) => error ? reject(error) : resolve(rows));
+        });
+    }
 
-                        connection.release();
-                    })
-                }
-            })
-        })
+    close(): Promise<void> {
+        const pool = this.pool;
+        this.pool = null;
+        return new Promise((resolve, reject) => {
+            if (!pool) { resolve(); return; }
+            pool.end((error) => error ? reject(error) : resolve());
+        });
     }
 }
-
-
-export default SQLManage

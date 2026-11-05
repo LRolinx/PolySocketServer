@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-11-05T15:08:15.401Z",
+  "durationSeconds": 45,
+  "passed": true,
+  "bilibili": {
+    "roomid": "1716079620",
+    "authenticated": true,
+    "endpoint": "wss://zj-cn-live-comet.chat.bilibili.com:2245/sub",
+    "heartbeatReplies": 1
+  },
+  "douyin": {
+    "webRid": "708764876300",
+    "endpoint": "wss://webcast100-ws-web-lq.douyin.com/webcast/im/push/v2/",
+    "webSocketFrames": 92,
+    "httpResponses": 1,
+    "decodedMessages": 199,
+    "webSocketChats": 9
+  },
+  "upstream": {
+    "RANK_CHANGED_V2": 5,
+    "ONLINE_RANK_V3": 6,
+    "DM_INTERACTION": 9,
+    "DANMU_MSG": 26,
+    "WATCHED_CHANGE": 7,
+    "ONLINE_RANK_COUNT": 14,
+    "WebcastChatMessage": 24,
+    "WebcastMemberMessage": 174,
+    "INTERACT_WORD_V2": 42,
+    "LIKE_INFO_V3_CLICK": 2,
+    "LIKE_INFO_V3_UPDATE": 7,
+    "ENTRY_EFFECT": 4,
+    "SEND_GIFT_V2": 2,
+    "LOG_IN_NOTICE": 1,
+    "NOTICE_MSG": 1,
+    "ROOM_REAL_TIME_MESSAGE_UPDATE": 1,
+    "WebcastLikeMessage": 1
+  },
+  "forwarded": {
+    "BiliBili_DANMU_MSG": 68,
+    "DouYin_DANMU_MSG": 24,
+    "DouYin_MEMBER": 174,
+    "BiliBili_SEND_GIFT": 2,
+    "DouYin_LIKE": 1
+  },
+  "errors": []
+}
